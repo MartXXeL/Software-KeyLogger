@@ -8,14 +8,17 @@ beforeAll(connect);
 afterAll(disconnect);
 afterEach(clearAll);
 
+let _clock = Date.now();
+function tick() { return new Date(_clock++); }
+
 function typeString(str, host = 'test-host', win = 'test-window') {
   for (const ch of str) {
-    wordBuilder.handleKey({ host, window: win, key: ch, timestamp: new Date() });
+    wordBuilder.handleKey({ host, window: win, key: ch, timestamp: tick() });
   }
 }
 
 function typeSpecial(key, host = 'test-host', win = 'test-window') {
-  wordBuilder.handleKey({ host, window: win, key, timestamp: new Date() });
+  wordBuilder.handleKey({ host, window: win, key, timestamp: tick() });
 }
 
 describe('wordBuilder - separacion de palabras', () => {
