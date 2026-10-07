@@ -63,12 +63,13 @@ describe('wordBuilder - separacion de palabras', () => {
     expect(words[1].word).toBe('dos');
   });
 
-  test('signos de puntuacion separan palabras', async () => {
+  test('signos de puntuacion se acumulan en la palabra', async () => {
     typeString('hola,mundo;test');
     await wordBuilder.flushAll();
 
     const words = await Word.find({});
-    expect(words.length).toBe(3);
+    expect(words.length).toBe(1);
+    expect(words[0].word).toBe('hola,mundo;test');
   });
 
   test('@ y . NO separan (para capturar emails)', async () => {
@@ -116,7 +117,7 @@ describe('wordBuilder - separacion de palabras', () => {
 
     const words = await Word.find({ host: 'h' });
     expect(words.length).toBe(1);
-    expect(words[0].word).toBe('hola');
+    expect(words[0].word).toBe('hOla');
   });
 
   test('cambio de ventana cierra la palabra', async () => {
@@ -145,6 +146,7 @@ describe('wordBuilder - clasificacion de complejidad', () => {
     typeString('casa42 ');
     await wordBuilder.flushAll();
     const w = await Word.findOne({});
+    expect(w.word).toBe('casa42');
     expect(w.complexity).toBe('alphanumeric');
   });
 
@@ -152,6 +154,7 @@ describe('wordBuilder - clasificacion de complejidad', () => {
     typeString('Hola123 ');
     await wordBuilder.flushAll();
     const w = await Word.findOne({});
+    expect(w.word).toBe('Hola123');
     expect(w.complexity).toBe('mixed-case-num');
   });
 

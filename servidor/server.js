@@ -123,7 +123,7 @@ app.get('/api/stats/top-words', async (req, res) => {
   try {
     const rows = await Word.aggregate([
       { $match: match },
-      { $group: { _id: '$word', count: { $sum: 1 } } },
+      { $group: { _id: { $toLower: '$word' }, count: { $sum: 1 } } },
       { $sort: { count: -1, _id: 1 } },
       { $limit: limit },
       { $project: { _id: 0, word: '$_id', count: 1 } }
@@ -168,7 +168,7 @@ app.get('/api/stats/summary', async (req, res) => {
       ]),
       Word.aggregate([
         ...base,
-        { $group: { _id: '$word' } },
+        { $group: { _id: { $toLower: '$word' } } },
         { $count: 'unique' }
       ])
     ]);
