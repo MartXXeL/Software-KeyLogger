@@ -1,0 +1,10 @@
+node_modules/
+*.log
+*.obj
+*.exe
+*.pdb
+*.ilk
+logs/
+.env
+.DS_Store
+Thumbs.db
