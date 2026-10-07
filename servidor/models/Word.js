@@ -7,6 +7,10 @@ const wordSchema = new mongoose.Schema({
   window:    { type: String, index: true },
   word:      { type: String, required: true, index: true },
   length:    { type: Number, index: true },
+  // Complejidad de la palabra (deteccion de posibles contraseñas).
+  // null = palabra normal, 'alphanumeric' = letras+numeros,
+  // 'mixed-case-num' = mayus+minus+num, 'strong' = mayus+minus+num+caracter especial
+  complexity: { type: String, default: null, index: true },
   timestamp: { type: Date,   default: Date.now, index: true }
 });
 

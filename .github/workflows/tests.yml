@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: servidor/package-lock.json
+
+      - name: Install dependencies
+        working-directory: servidor
+        run: npm ci || npm install
+
+      - name: Run unit & integration tests
+        working-directory: servidor
+        run: npm test
+        env:
+          MONGO_URI: mongodb://127.0.0.1:27017/keylogger-test
+
+      - name: Run performance tests
+        working-directory: servidor
+        run: npm run test:perf
+        env:
+          MONGO_URI: mongodb://127.0.0.1:27017/keylogger-perf

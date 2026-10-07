@@ -1,14 +1,21 @@
 {
   "name": "keylogger-server",
   "version": "1.0.0",
-  "description": "Servidor receptor de pulsaciones - Laboratorio Tecnologias Emergentes (hacking etico) - Universidad de Deusto",
+  "description": "Servidor receptor de pulsaciones - Universidad de Deusto",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "jest --runInBand --forceExit --detectOpenHandles",
+    "test:perf": "jest --runInBand --forceExit --detectOpenHandles --testPathPattern=perf"
   },
   "dependencies": {
     "express": "^4.19.2",
     "mongoose": "^8.5.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.0.0",
+    "supertest": "^7.0.0"
   }
 }
