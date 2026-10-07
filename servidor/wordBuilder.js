@@ -18,14 +18,16 @@ const Credential = require('./models/Credential');
 const CLOSERS = new Set([
   '[ENTER]', '[TAB]', '[ESCAPE]',
   '[LEFT]', '[RIGHT]', '[UP]', '[DOWN]',
-  '[HOME]', '[END]', '[PG_UP]', '[PG_DOWN]'
+  '[HOME]', '[END]', '[PG_UP]', '[PG_DOWN]',
+  '[DELETE]', '[INSERT]'
 ]);
 
 // Modificadores: se ignoran sin cerrar la palabra.
 const MODIFIERS = new Set([
   '[SHIFT]', '[LSHIFT]', '[RSHIFT]',
   '[CONTROL]', '[LCONTROL]', '[RCONTROL]',
-  '[ALT]', '[LWIN]', '[RWIN]', '[CAPSLOCK]'
+  '[ALT]', '[LALT]', '[RALT]',
+  '[LWIN]', '[RWIN]', '[CAPSLOCK]'
 ]);
 
 const MIN_LEN = 2;

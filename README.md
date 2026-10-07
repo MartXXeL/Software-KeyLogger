@@ -20,6 +20,7 @@ Keylogger educativo con arquitectura cliente-servidor desarrollado como trabajo 
 
 - Programa en C++ para Windows que utiliza un hook de teclado de bajo nivel (`WH_KEYBOARD_LL`).
 - Captura todas las pulsaciones del sistema y las envía por HTTP al servidor en tiempo real.
+- Traduce las pulsaciones al carácter real usando `ToUnicodeEx`: detecta Shift, CapsLock, AltGr y combinaciones del teclado español (@, #, !, etc.).
 - Registra la tecla, la ventana activa, timestamp y hostname.
 - Opcionalmente guarda un log local en `logs/` como respaldo.
 - Compilable con MSVC o MinGW-w64.

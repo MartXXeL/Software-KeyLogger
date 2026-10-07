@@ -58,15 +58,6 @@
   th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--border); }
   th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
-  .bar {
-    display: inline-block;
-    height: 8px;
-    background: var(--accent);
-    border-radius: 4px;
-    vertical-align: middle;
-    margin-right: 6px;
-  }
-  .bar.alt { background: var(--accent2); }
   .controls {
     display: flex;
     gap: 8px;
@@ -175,7 +166,7 @@
     <div class="card">
       <h2>Palabras más usadas</h2>
       <table id="top-words">
-        <thead><tr><th>#</th><th>Palabra</th><th class="n">Veces</th><th>Gráfico</th></tr></thead>
+        <thead><tr><th>#</th><th>Palabra</th><th class="n">Veces</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -196,7 +187,7 @@
     <div class="card">
       <h2>Distribución por longitud</h2>
       <table id="len-hist">
-        <thead><tr><th>Longitud</th><th class="n">Veces</th><th>Gráfico</th></tr></thead>
+        <thead><tr><th>Longitud</th><th class="n">Veces</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -350,17 +341,14 @@ async function loadAll() {
 
     // Top palabras
     const tb = clear('top-words');
-    const max = top.reduce((m, r) => Math.max(m, r.count), 1);
     top.forEach((r, i) => {
-      const pct = (r.count / max) * 100;
       tb.appendChild(row([
         i + 1,
         { html: '<span class="word">' + esc(r.word) + '</span>' },
-        { html: r.count, cls: 'n' },
-        { html: '<span class="bar" style="width:' + Math.max(pct, 4).toFixed(1) + '%"></span>' }
+        { html: r.count, cls: 'n' }
       ]));
     });
-    if (top.length === 0) tb.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '', '']));
+    if (top.length === 0) tb.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '']));
 
     // Top ventanas
     const tbw = clear('top-windows');
@@ -377,13 +365,10 @@ async function loadAll() {
 
     // Histograma longitud
     const tbl = clear('len-hist');
-    const maxL = summary.lengthHistogram.reduce((m, r) => Math.max(m, r.count), 1);
     summary.lengthHistogram.forEach(r => {
-      const pct = (r.count / maxL) * 100;
       tbl.appendChild(row([
         r.length,
-        { html: r.count, cls: 'n' },
-        { html: '<span class="bar alt" style="width:' + Math.max(pct, 4).toFixed(1) + '%"></span>' }
+        { html: r.count, cls: 'n' }
       ]));
     });
 
