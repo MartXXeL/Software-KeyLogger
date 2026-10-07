@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Keylogger · estadísticas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --fg: #e6e8ee;
+    --muted: #8a93a6;
+    --accent: #7aa2f7;
+    --accent2: #9ece6a;
+    --accent3: #e0af68;
+    --border: #262a33;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    padding: 24px;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); margin-bottom: 20px; font-size: 13px; }
+  .grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+  }
+  .kpis { display: flex; gap: 16px; flex-wrap: wrap; }
+  .kpi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    flex: 1 1 160px;
+  }
+  .kpi .n { font-size: 26px; font-weight: 700; color: var(--accent); }
+  .kpi .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar {
+    display: inline-block;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  .bar.alt { background: var(--accent2); }
+  .controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  input, button, select {
+    background: var(--panel);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color-scheme: dark;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .word { font-family: ui-monospace, SF Mono, Consolas, monospace; }
+
+  /* Grafico de pulsaciones por hora */
+  .hour-chart {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 3px;
+    align-items: end;
+    height: 140px;
+    margin-top: 6px;
+  }
+  .hour-chart .hbar {
+    background: var(--accent3);
+    border-radius: 3px 3px 0 0;
+    min-height: 2px;
+    position: relative;
+  }
+  .hour-chart .hbar:hover { filter: brightness(1.3); }
+  .hour-axis {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 3px;
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <h1>Estadísticas del keylogger</h1>
+  <div class="sub">Laboratorio Tecnologías Emergentes · Universidad de Deusto</div>
+
+  <div class="controls">
+    <label class="muted">host</label>
+    <input id="host" placeholder="todos" />
+    <label class="muted">desde</label>
+    <input id="from" type="datetime-local" />
+    <label class="muted">hasta</label>
+    <input id="to" type="datetime-local" />
+    <label class="muted">top</label>
+    <input id="limit" type="number" min="5" max="500" value="25" style="width:80px" />
+    <button id="refresh">Actualizar</button>
+    <button id="clear-dates" title="Limpiar rango de fechas">Limpiar fechas</button>
+    <button id="flush" title="Fuerza el guardado de los buffers en memoria">Flush buffers</button>
+    <span id="status" class="muted"></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div style="height:16px"></div>
+
+  <div class="grid">
+    <div class="card" style="grid-column: 1 / -1;">
+      <h2>Pulsaciones por hora del día</h2>
+      <div class="hour-chart" id="hour-chart"></div>
+      <div class="hour-axis" id="hour-axis"></div>
+    </div>
+
+    <div class="card">
+      <h2>Palabras más usadas</h2>
+      <table id="top-words">
+        <thead><tr><th>#</th><th>Palabra</th><th class="n">Veces</th><th>Gráfico</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Ventanas con más escritura</h2>
+      <table id="top-windows">
+        <thead><tr><th>#</th><th>Ventana</th><th class="n">Palabras</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Palabras por host</h2>
+      <table id="per-host">
+        <thead><tr><th>Host</th><th class="n">Palabras</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Distribución por longitud</h2>
+      <table id="len-hist">
+        <thead><tr><th>Longitud</th><th class="n">Veces</th><th>Gráfico</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function j(url, opts) {
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    let msg = url + ' -> ' + r.status;
+    try { const b = await r.json(); if (b.error) msg += ' (' + b.error + ')'; } catch(e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+// Convierte el valor de un <input type="datetime-local"> a ISO con zona.
+function dtLocalToIso(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString();
+}
+
+function qs(extra = {}) {
+  const host = $('host').value.trim();
+  const from = dtLocalToIso($('from').value);
+  const to = dtLocalToIso($('to').value);
+  const limit = Math.max(5, Math.min(500, parseInt($('limit').value || '25', 10)));
+  const p = new URLSearchParams();
+  if (host) p.set('host', host);
+  if (from) p.set('from', from);
+  if (to) p.set('to', to);
+  p.set('limit', String(limit));
+  for (const [k, v] of Object.entries(extra)) if (v != null) p.set(k, String(v));
+  return p.toString();
+}
+
+function row(cells) {
+  const tr = document.createElement('tr');
+  for (const c of cells) {
+    const td = document.createElement('td');
+    if (c && typeof c === 'object' && 'html' in c) {
+      td.innerHTML = c.html;
+      if (c.cls) td.className = c.cls;
+    } else {
+      td.textContent = c == null ? '' : String(c);
+    }
+    tr.appendChild(td);
+  }
+  return tr;
+}
+
+function clear(tbodyId) {
+  const t = document.querySelector('#' + tbodyId + ' tbody');
+  t.innerHTML = '';
+  return t;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function renderHourChart(data) {
+  const chart = $('hour-chart');
+  const axis = $('hour-axis');
+  chart.innerHTML = '';
+  axis.innerHTML = '';
+  const max = data.reduce((m, r) => Math.max(m, r.count), 1);
+  for (const r of data) {
+    const bar = document.createElement('div');
+    bar.className = 'hbar';
+    const pct = (r.count / max) * 100;
+    bar.style.height = pct.toFixed(1) + '%';
+    bar.title = r.hour.toString().padStart(2, '0') + ':00 — ' + r.count + ' pulsaciones';
+    chart.appendChild(bar);
+
+    const lbl = document.createElement('div');
+    lbl.textContent = String(r.hour).padStart(2, '0');
+    axis.appendChild(lbl);
+  }
+}
+
+async function loadAll() {
+  const q = qs();
+  $('status').textContent = 'cargando…';
+  try {
+    const [summary, top, wins, byHour] = await Promise.all([
+      j('/api/stats/summary?' + q),
+      j('/api/stats/top-words?' + q),
+      j('/api/stats/top-windows?' + q),
+      j('/api/stats/by-hour?' + q)
+    ]);
+
+    // KPIs
+    $('kpis').innerHTML = `
+      <div class="kpi"><div class="n">${summary.totalWords}</div><div class="l">palabras totales</div></div>
+      <div class="kpi"><div class="n">${summary.uniqueWords}</div><div class="l">palabras únicas</div></div>
+      <div class="kpi"><div class="n">${summary.averageLength}</div><div class="l">longitud media</div></div>
+      <div class="kpi"><div class="n">${summary.perHost.length}</div><div class="l">hosts activos</div></div>
+    `;
+
+    renderHourChart(byHour);
+
+    // Top palabras
+    const tb = clear('top-words');
+    const max = top.reduce((m, r) => Math.max(m, r.count), 1);
+    top.forEach((r, i) => {
+      const pct = (r.count / max) * 100;
+      tb.appendChild(row([
+        i + 1,
+        { html: '<span class="word">' + esc(r.word) + '</span>' },
+        { html: r.count, cls: 'n' },
+        { html: '<span class="bar" style="width:' + pct.toFixed(1) + 'px"></span>' }
+      ]));
+    });
+    if (top.length === 0) tb.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '', '']));
+
+    // Top ventanas
+    const tbw = clear('top-windows');
+    wins.forEach((r, i) => {
+      tbw.appendChild(row([i + 1, r.window || '(sin título)', { html: r.count, cls: 'n' }]));
+    });
+    if (wins.length === 0) tbw.appendChild(row([{ html: '<span class="muted">sin datos</span>' }, '', '']));
+
+    // Por host
+    const tbh = clear('per-host');
+    summary.perHost.forEach(r => {
+      tbh.appendChild(row([r.host, { html: r.count, cls: 'n' }]));
+    });
+
+    // Histograma longitud
+    const tbl = clear('len-hist');
+    const maxL = summary.lengthHistogram.reduce((m, r) => Math.max(m, r.count), 1);
+    summary.lengthHistogram.forEach(r => {
+      const pct = (r.count / maxL) * 100;
+      tbl.appendChild(row([
+        r.length,
+        { html: r.count, cls: 'n' },
+        { html: '<span class="bar alt" style="width:' + pct.toFixed(1) + 'px"></span>' }
+      ]));
+    });
+
+    $('status').textContent = 'actualizado ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    $('status').textContent = 'error: ' + e.message;
+  }
+}
+
+$('refresh').addEventListener('click', loadAll);
+$('clear-dates').addEventListener('click', () => {
+  $('from').value = '';
+  $('to').value = '';
+  loadAll();
+});
+$('flush').addEventListener('click', async () => {
+  $('status').textContent = 'flushing…';
+  await fetch('/api/stats/flush', { method: 'POST' });
+  loadAll();
+});
+['host', 'limit', 'from', 'to'].forEach(id => {
+  $(id).addEventListener('keydown', e => { if (e.key === 'Enter') loadAll(); });
+});
+$('from').addEventListener('change', loadAll);
+$('to').addEventListener('change', loadAll);
+
+loadAll();
+setInterval(loadAll, 15000);
+</script>
+</body>
+</html>
