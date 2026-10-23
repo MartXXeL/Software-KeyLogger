@@ -2,12 +2,13 @@
 setlocal enabledelayedexpansion
 
 set "ORIGEN=%~dp0"
+if "%ORIGEN:~-1%"=="\" set "ORIGEN=%ORIGEN:~0,-1%"
 set "DESTINO=C:\Users\%USERNAME%\MiPrograma"
 
 if not exist "%DESTINO%" mkdir "%DESTINO%"
 
 echo Copiando proyecto...
-robocopy "%ORIGEN%" "%DESTINO%" /E /XD ".git" /NFL /NDL /NJH /NJS /NC /NS
+robocopy "%ORIGEN%" "%DESTINO%" *.* /E /XD ".git" /NFL /NDL /NJH /NJS /NC /NS /DCOPY:DA /COPY:DAT /R:3 /W:5
 
 if exist "%ORIGEN%.gitignore" (
     for /f "usebackq eol=# delims=" %%A in ("%ORIGEN%.gitignore") do (
